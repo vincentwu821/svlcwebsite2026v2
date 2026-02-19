@@ -17,7 +17,7 @@ export default function Navbar() {
   }, []);
 
   const links = [
-    { name: "About", href: "#about" },
+    { name: "Mission", href: "#about" },
     { name: "Events", href: "#events" },
     { name: "Community", href: "#community" },
     { name: "Membership", href: "#membership" },

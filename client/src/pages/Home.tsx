@@ -113,6 +113,9 @@ export default function Home() {
                 More than just a network. <br/>
                 <span className="text-gray-400">A movement.</span>
               </h2>
+              <div className="mb-4 inline-block px-3 py-1 rounded-full bg-black/5 border border-black/10">
+                <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Who We Are</span>
+              </div>
               <p className="text-lg text-gray-600 mb-6 leading-relaxed">
                 The Silicon Valley Leadership Community (SVLC) was founded on a simple principle: innovation thrives when leaders connect. We bridge the gap between emerging talent and established executives.
               </p>
