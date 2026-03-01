@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "wouter";
+import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { eventsData, type EventTheme } from "@/data/events";
+import VideoThumbnail from "@/components/events/VideoThumbnail";
+import { eventsData, type EventFormat, type EventMedia, type EventTheme } from "@/data/events";
 
 // Assets
 import HeroBg from "@/assets/hero-bg.png";
@@ -337,15 +339,15 @@ export default function Home() {
     Pinterest: PinterestLogoImg,
   };
 
-  const [selectedFormat, setSelectedFormat] = useState("All");
+  const [selectedFormat, setSelectedFormat] = useState<"All" | EventFormat>("All");
   const [selectedTheme, setSelectedTheme] = useState<"All" | EventTheme>("All");
   const [timeSort, setTimeSort] = useState<"newest" | "oldest">("newest");
   const [visibleEventCount, setVisibleEventCount] = useState(6);
   const [activePhoto, setActivePhoto] = useState<{
-    src: string;
-    alt: string;
+    photos: EventMedia[];
+    index: number;
     eventTitle: string;
-    layoutId: string;
+    layoutId?: string;
   } | null>(null);
 
   const themeTags: EventTheme[] = [
@@ -357,16 +359,24 @@ export default function Home() {
     "Social Impact",
   ];
 
-  const formatTags = useMemo(
-    () => ["All", ...Array.from(new Set(eventsData.map((event) => event.format)))],
-    [],
-  );
+  const formatTags = useMemo<("All" | EventFormat)[]>(() => {
+    const orderedFormats = [
+      "Summit",
+      "Fireside",
+      "Roundtable",
+      "Workshop",
+      "Mentorship",
+      "Networking",
+    ] as const;
+
+    return ["All", ...orderedFormats.filter((format) => eventsData.some((event) => event.formats.includes(format)))];
+  }, []);
 
   const visibleEvents = useMemo(() => {
     const byFormat =
       selectedFormat === "All"
         ? eventsData
-        : eventsData.filter((event) => event.format === selectedFormat);
+        : eventsData.filter((event) => event.formats.includes(selectedFormat));
 
     const byFormatAndTheme =
       selectedTheme === "All"
@@ -385,6 +395,8 @@ export default function Home() {
   }, [selectedFormat, selectedTheme, timeSort]);
 
   const eventsToRender = visibleEvents.slice(0, visibleEventCount);
+
+  const previewPhotoLimit = 5;
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden font-sans">
@@ -780,9 +792,14 @@ export default function Home() {
               <article key={event.id} className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold tracking-wide text-gray-600">
-                      {event.format}
-                    </span>
+                    {event.formats.map((format) => (
+                      <span
+                        key={`${event.id}-${format}`}
+                        className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold tracking-wide text-gray-600"
+                      >
+                        {format}
+                      </span>
+                    ))}
                     {event.themes.map((theme) => (
                       <span
                         key={`${event.id}-${theme}`}
@@ -803,28 +820,74 @@ export default function Home() {
 
                 <h3 className="mb-4 text-xl font-semibold text-gray-900">{event.title}</h3>
 
-                <div className="grid grid-cols-3 gap-3">
-                  {event.photos.map((photo, photoIndex) => (
-                    <button
-                      key={`${event.id}-${photoIndex}`}
-                      onClick={() =>
-                        setActivePhoto({
-                          src: photo.src,
-                          alt: photo.alt,
-                          eventTitle: event.title,
-                          layoutId: `event-photo-${event.id}-${photoIndex}`,
-                        })
-                      }
-                      className="overflow-hidden rounded-xl border border-gray-200"
+                <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {event.photos.slice(0, previewPhotoLimit).map((photo, photoIndex) => {
+                    const hiddenCount = event.photos.length - previewPhotoLimit;
+                    const showMoreOverlay =
+                      hiddenCount > 0 && photoIndex === previewPhotoLimit - 1;
+
+                    return (
+                      <button
+                        key={`${event.id}-${photoIndex}`}
+                        onClick={() =>
+                          setActivePhoto({
+                            photos: event.photos,
+                            index: photoIndex,
+                            eventTitle: event.title,
+                            layoutId:
+                              photo.type === "video"
+                                ? undefined
+                                : `event-photo-${event.id}-${photoIndex}`,
+                          })
+                        }
+                        className="relative h-24 w-36 shrink-0 overflow-hidden rounded-xl border border-gray-200"
+                      >
+                        {photo.type === "video" ? (
+                          <VideoThumbnail
+                            src={photo.src}
+                            alt={photo.alt}
+                            className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                          />
+                        ) : (
+                          <motion.img
+                            layoutId={`event-photo-${event.id}-${photoIndex}`}
+                            src={photo.src}
+                            alt={photo.alt}
+                            className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                          />
+                        )}
+                        {photo.type === "video" && (
+                          <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white">
+                              <Play className="h-4 w-4 fill-current" />
+                            </span>
+                          </span>
+                        )}
+                        {showMoreOverlay && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-base font-semibold text-white">
+                            +{hiddenCount}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 pl-1">
+                  {event.detailsUrl ? (
+                    <a
+                      href={event.detailsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-medium text-gray-600 underline-offset-2 hover:text-gray-900 hover:underline"
                     >
-                      <motion.img
-                        layoutId={`event-photo-${event.id}-${photoIndex}`}
-                        src={photo.src}
-                        alt={photo.alt}
-                        className="h-24 w-full object-cover transition-transform duration-300 hover:scale-105"
-                      />
-                    </button>
-                  ))}
+                      View Event Details ↗
+                    </a>
+                  ) : (
+                    <span className="text-xs font-medium text-gray-400">
+                      View Event Details ↗
+                    </span>
+                  )}
                 </div>
               </article>
             ))}
@@ -859,15 +922,73 @@ export default function Home() {
             onClick={() => setActivePhoto(null)}
           >
             <div className="flex h-full w-full items-center justify-center">
-              <motion.img
-                layoutId={activePhoto.layoutId}
-                src={activePhoto.src}
-                alt={activePhoto.alt}
-                transition={{ duration: 0.2, ease: "easeInOut" }}
-                className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain"
-                onClick={(event) => event.stopPropagation()}
-              />
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setActivePhoto((current) =>
+                    current
+                      ? {
+                          ...current,
+                          index:
+                            current.index === 0
+                              ? current.photos.length - 1
+                              : current.index - 1,
+                          layoutId: undefined,
+                        }
+                      : current,
+                  );
+                }}
+                className="mr-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
+                aria-label="Previous photo"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              {activePhoto.photos[activePhoto.index].type === "video" ? (
+                <video
+                  src={activePhoto.photos[activePhoto.index].src}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain"
+                  onClick={(event) => event.stopPropagation()}
+                />
+              ) : (
+                <motion.img
+                  layoutId={activePhoto.layoutId}
+                  src={activePhoto.photos[activePhoto.index].src}
+                  alt={activePhoto.photos[activePhoto.index].alt}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                  className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain"
+                  onClick={(event) => event.stopPropagation()}
+                />
+              )}
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setActivePhoto((current) =>
+                    current
+                      ? {
+                          ...current,
+                          index:
+                            current.index === current.photos.length - 1
+                              ? 0
+                              : current.index + 1,
+                          layoutId: undefined,
+                        }
+                      : current,
+                  );
+                }}
+                className="ml-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
+                aria-label="Next photo"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
             </div>
+            <p className="mt-3 text-center text-sm text-white/80">
+              {activePhoto.index + 1} / {activePhoto.photos.length}
+            </p>
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,20 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Play } from "lucide-react";
 
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import VideoThumbnail from "@/components/events/VideoThumbnail";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { eventsData, type EventTheme } from "@/data/events";
+import { eventsData, type EventFormat, type EventMedia, type EventTheme } from "@/data/events";
 
 export default function EventsPage() {
-  const [selectedFormat, setSelectedFormat] = useState("All");
+  const [selectedFormat, setSelectedFormat] = useState<"All" | EventFormat>("All");
   const [selectedTheme, setSelectedTheme] = useState<"All" | EventTheme>("All");
   const [timeSort, setTimeSort] = useState<"newest" | "oldest">("newest");
   const [activePhoto, setActivePhoto] = useState<{
-    src: string;
-    alt: string;
+    photos: EventMedia[];
+    index: number;
     eventTitle: string;
   } | null>(null);
 
@@ -31,16 +32,24 @@ export default function EventsPage() {
     "Social Impact",
   ];
 
-  const formatTags = useMemo(
-    () => ["All", ...Array.from(new Set(eventsData.map((event) => event.format)))],
-    [],
-  );
+  const formatTags = useMemo<("All" | EventFormat)[]>(() => {
+    const orderedFormats = [
+      "Summit",
+      "Fireside",
+      "Roundtable",
+      "Workshop",
+      "Mentorship",
+      "Networking",
+    ] as const;
+
+    return ["All", ...orderedFormats.filter((format) => eventsData.some((event) => event.formats.includes(format)))];
+  }, []);
 
   const visibleEvents = useMemo(() => {
     const byFormat =
       selectedFormat === "All"
         ? eventsData
-        : eventsData.filter((event) => event.format === selectedFormat);
+        : eventsData.filter((event) => event.formats.includes(selectedFormat));
 
     const byFormatAndTheme =
       selectedTheme === "All"
@@ -53,6 +62,8 @@ export default function EventsPage() {
       return timeSort === "newest" ? bTime - aTime : aTime - bTime;
     });
   }, [selectedFormat, selectedTheme, timeSort]);
+
+  const previewPhotoLimit = 5;
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
@@ -142,9 +153,14 @@ export default function EventsPage() {
               <article key={event.id} className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold tracking-wide text-gray-600">
-                      {event.format}
-                    </span>
+                    {event.formats.map((format) => (
+                      <span
+                        key={`${event.id}-${format}`}
+                        className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold tracking-wide text-gray-600"
+                      >
+                        {format}
+                      </span>
+                    ))}
                     {event.themes.map((theme) => (
                       <span
                         key={`${event.id}-${theme}`}
@@ -165,26 +181,69 @@ export default function EventsPage() {
 
                 <h3 className="mb-4 text-xl font-semibold text-gray-900">{event.title}</h3>
 
-                <div className="grid grid-cols-3 gap-3">
-                  {event.photos.map((photo, photoIndex) => (
-                    <button
-                      key={`${event.id}-${photoIndex}`}
-                      onClick={() =>
-                        setActivePhoto({
-                          src: photo.src,
-                          alt: photo.alt,
-                          eventTitle: event.title,
-                        })
-                      }
-                      className="overflow-hidden rounded-xl border border-gray-200"
+                <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {event.photos.slice(0, previewPhotoLimit).map((photo, photoIndex) => {
+                    const hiddenCount = event.photos.length - previewPhotoLimit;
+                    const showMoreOverlay =
+                      hiddenCount > 0 && photoIndex === previewPhotoLimit - 1;
+
+                    return (
+                      <button
+                        key={`${event.id}-${photoIndex}`}
+                        onClick={() =>
+                          setActivePhoto({
+                            photos: event.photos,
+                            index: photoIndex,
+                            eventTitle: event.title,
+                          })
+                        }
+                        className="relative h-24 w-36 shrink-0 overflow-hidden rounded-xl border border-gray-200"
+                      >
+                        {photo.type === "video" ? (
+                          <VideoThumbnail
+                            src={photo.src}
+                            alt={photo.alt}
+                            className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                          />
+                        ) : (
+                          <img
+                            src={photo.src}
+                            alt={photo.alt}
+                            className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                          />
+                        )}
+                        {photo.type === "video" && (
+                          <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white">
+                              <Play className="h-4 w-4 fill-current" />
+                            </span>
+                          </span>
+                        )}
+                        {showMoreOverlay && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-base font-semibold text-white">
+                            +{hiddenCount}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 pl-1">
+                  {event.detailsUrl ? (
+                    <a
+                      href={event.detailsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-medium text-gray-600 underline-offset-2 hover:text-gray-900 hover:underline"
                     >
-                      <img
-                        src={photo.src}
-                        alt={photo.alt}
-                        className="h-24 w-full object-cover transition-transform duration-300 hover:scale-105"
-                      />
-                    </button>
-                  ))}
+                      View Event Details ↗
+                    </a>
+                  ) : (
+                    <span className="text-xs font-medium text-gray-400">
+                      View Event Details ↗
+                    </span>
+                  )}
                 </div>
               </article>
             ))}
@@ -215,11 +274,68 @@ export default function EventsPage() {
             {activePhoto ? `${activePhoto.eventTitle} photo` : "Event photo"}
           </DialogTitle>
           {activePhoto && (
-            <img
-              src={activePhoto.src}
-              alt={activePhoto.alt}
-              className="max-h-[85vh] w-full rounded-md object-contain"
-            />
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setActivePhoto((current) =>
+                    current
+                      ? {
+                          ...current,
+                          index:
+                            current.index === 0
+                              ? current.photos.length - 1
+                              : current.index - 1,
+                        }
+                      : current,
+                  )
+                }
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
+                aria-label="Previous photo"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              {activePhoto.photos[activePhoto.index].type === "video" ? (
+                <video
+                  src={activePhoto.photos[activePhoto.index].src}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="max-h-[85vh] w-full rounded-md object-contain"
+                />
+              ) : (
+                <img
+                  src={activePhoto.photos[activePhoto.index].src}
+                  alt={activePhoto.photos[activePhoto.index].alt}
+                  className="max-h-[85vh] w-full rounded-md object-contain"
+                />
+              )}
+              <button
+                type="button"
+                onClick={() =>
+                  setActivePhoto((current) =>
+                    current
+                      ? {
+                          ...current,
+                          index:
+                            current.index === current.photos.length - 1
+                              ? 0
+                              : current.index + 1,
+                        }
+                      : current,
+                  )
+                }
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
+                aria-label="Next photo"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+          {activePhoto && (
+            <p className="pb-2 text-center text-sm text-white/80">
+              {activePhoto.index + 1} / {activePhoto.photos.length}
+            </p>
           )}
         </DialogContent>
       </Dialog>
