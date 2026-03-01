@@ -4,8 +4,8 @@ import InnovationImg from "@/assets/innovation.png";
 import FocusGroupImg from "@/assets/focus-group-1.png";
 import SvlcBoardTeamImg from "@/assets/svlc-board-team.jpg";
 import MonthlyEventAudienceImg from "@/assets/monthly-event-audience-1.png";
-import Jan292026Event1Img from "@/assets/jan292026event1.jpg";
-import Jan292026Event2Img from "@/assets/jan292026event2.jpg";
+import Jan292026Event1Img from "@/assets/Jan292026Event1.JPG";
+import Jan292026Event2Img from "@/assets/Jan292026Event2.JPG";
 
 export type EventPhoto = {
   src: string;
