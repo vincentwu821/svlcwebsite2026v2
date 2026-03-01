@@ -85,11 +85,14 @@ export default function SupportPage() {
       return;
     }
 
-    const endpoint = import.meta.env.VITE_SUPPORT_SHEET_WEBHOOK_URL as string | undefined;
+    const endpoint =
+      (import.meta.env.VITE_SHEET_WEBHOOK_URL as string | undefined) ||
+      (import.meta.env.VITE_SUPPORT_SHEET_WEBHOOK_URL as string | undefined);
     if (!endpoint) {
       toast({
         title: "Sheet endpoint not configured",
-        description: "Missing VITE_SUPPORT_SHEET_WEBHOOK_URL in environment variables.",
+        description:
+          "Missing VITE_SHEET_WEBHOOK_URL (or VITE_SUPPORT_SHEET_WEBHOOK_URL) in environment variables.",
       });
       return;
     }
