@@ -18,9 +18,10 @@ export default function Navbar() {
 
   const links = [
     { name: "Mission", href: "#about" },
+    { name: "People", href: "#people" },
     { name: "Events", href: "#events" },
-    { name: "Community", href: "#community" },
-    { name: "Membership", href: "#membership" },
+    { name: "Members", href: "#membership" },
+    { name: "Donation", href: "/support" },
   ];
 
   return (
@@ -32,9 +33,16 @@ export default function Navbar() {
     >
       <div className="container mx-auto px-6 flex items-center justify-between">
         <Link href="/">
-          <a className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <span className="bg-black text-white w-8 h-8 flex items-center justify-center rounded-lg text-sm font-mono">SV</span>
-            <span>SVLC</span>
+          <a className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-cyan-700 text-white flex items-center justify-center text-sm font-bold tracking-wide shadow-md shadow-slate-300/70">
+              SV
+            </span>
+            <span className="leading-tight">
+              <span className="block text-xl font-bold tracking-tight text-gray-900">SVLC</span>
+              <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-gray-500">
+                Silicon Valley Leadership Community
+              </span>
+            </span>
           </a>
         </Link>
 
@@ -49,8 +57,10 @@ export default function Navbar() {
               {link.name}
             </a>
           ))}
-          <Button className="rounded-full px-6" size="sm">
-            Join Now
+          <Button asChild className="rounded-full px-6" size="sm">
+            <Link href="/join">
+              <a>Join Now</a>
+            </Link>
           </Button>
         </div>
 
@@ -76,7 +86,11 @@ export default function Navbar() {
               {link.name}
             </a>
           ))}
-          <Button className="w-full rounded-full mt-2">Join Now</Button>
+          <Button asChild className="w-full rounded-full mt-2">
+            <Link href="/join">
+              <a onClick={() => setMobileMenuOpen(false)}>Join Now</a>
+            </Link>
+          </Button>
         </div>
       )}
     </nav>
