@@ -55,6 +55,7 @@ export default function SupportPage() {
   const { toast } = useToast();
   const [formData, setFormData] = useState<SupportFormData>(initialFormData);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedChannelsText = useMemo(
     () => (formData.channels.length ? formData.channels.join(", ") : "No channels selected"),
@@ -73,7 +74,7 @@ export default function SupportPage() {
     });
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (formData.channels.length === 0) {
@@ -84,11 +85,59 @@ export default function SupportPage() {
       return;
     }
 
-    setSubmitted(true);
-    toast({
-      title: "Support request received",
-      description: "The SVLC team will contact you with next steps.",
-    });
+    const endpoint = import.meta.env.VITE_SUPPORT_SHEET_WEBHOOK_URL as string | undefined;
+    if (!endpoint) {
+      toast({
+        title: "Sheet endpoint not configured",
+        description: "Missing VITE_SUPPORT_SHEET_WEBHOOK_URL in environment variables.",
+      });
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSubmitted(false);
+
+      const payload = {
+        formType: "Support",
+        source: "SVLC Website",
+        companyName: formData.companyName,
+        website: formData.website,
+        contactName: formData.contactName,
+        title: formData.title,
+        email: formData.email,
+        channels: formData.channels.join(", "),
+        budgetRange: formData.budgetRange,
+        timeline: formData.timeline,
+        objective: formData.objective,
+        notes: formData.notes,
+        submittedAt: new Date().toISOString(),
+      };
+
+      await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        mode: "no-cors",
+        body: JSON.stringify(payload),
+      });
+
+      setSubmitted(true);
+      setFormData(initialFormData);
+      toast({
+        title: "Support request received",
+        description: "The SVLC team will contact you with next steps.",
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Submission failed",
+        description: "Please try again in a moment.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -313,8 +362,8 @@ export default function SupportPage() {
               </div>
 
               <div className="flex flex-col gap-3 pt-1">
-                <Button type="submit" size="lg" className="h-12 rounded-full">
-                  Submit Sponsorship Interest
+                <Button type="submit" size="lg" className="h-12 rounded-full" disabled={isSubmitting}>
+                  {isSubmitting ? "Submitting..." : "Submit Sponsorship Interest"}
                 </Button>
                 {submitted && (
                   <p className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700">

@@ -54,6 +54,7 @@ export default function JoinPage() {
   const { toast } = useToast();
   const [formData, setFormData] = useState<JoinFormData>(initialFormData);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleInterest = (interest: string) => {
     setFormData((prev) => {
@@ -67,7 +68,7 @@ export default function JoinPage() {
     });
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (formData.interests.length === 0) {
@@ -86,11 +87,58 @@ export default function JoinPage() {
       return;
     }
 
-    setSubmitted(true);
-    toast({
-      title: "Intent submitted",
-      description: "Thanks. The SVLC team will review and follow up.",
-    });
+    const endpoint = import.meta.env.VITE_JOIN_SHEET_WEBHOOK_URL as string | undefined;
+    if (!endpoint) {
+      toast({
+        title: "Sheet endpoint not configured",
+        description: "Missing VITE_JOIN_SHEET_WEBHOOK_URL in environment variables.",
+      });
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSubmitted(false);
+
+      const payload = {
+        formType: "Join",
+        source: "SVLC Website",
+        fullName: formData.fullName,
+        email: formData.email,
+        organization: formData.organization,
+        role: formData.role,
+        timeline: formData.timeline,
+        interests: formData.interests.join(", "),
+        intention: formData.intention,
+        additionalNotes: formData.additionalNotes,
+        consent: formData.consent ? "Yes" : "No",
+        submittedAt: new Date().toISOString(),
+      };
+
+      await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        mode: "no-cors",
+        body: JSON.stringify(payload),
+      });
+
+      setSubmitted(true);
+      setFormData(initialFormData);
+      toast({
+        title: "Intent submitted",
+        description: "Thanks. The SVLC team will review and follow up.",
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Submission failed",
+        description: "Please try again in a moment.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -287,8 +335,8 @@ export default function JoinPage() {
               </label>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button type="submit" size="lg" className="h-12 rounded-full px-8">
-                  Submit Interest
+                <Button type="submit" size="lg" className="h-12 rounded-full px-8" disabled={isSubmitting}>
+                  {isSubmitting ? "Submitting..." : "Submit Interest"}
                 </Button>
                 {submitted && (
                   <p className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700">
